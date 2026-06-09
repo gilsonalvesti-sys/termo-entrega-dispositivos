@@ -1,0 +1,272 @@
+.automatic-delivery-container {
+  margin-top: 40px;
+}
+
+.ad-section {
+  background: white;
+  border-radius: 8px;
+  border: 1px solid #e0e0e0;
+  padding: 30px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.ad-section h3 {
+  font-size: 12px;
+  font-weight: 700;
+  color: #333;
+  margin: 0 0 20px 0;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.ad-toggle-section {
+  margin-bottom: 25px;
+  padding-bottom: 25px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.ad-select-section {
+  margin-bottom: 25px;
+}
+
+.ad-select-section label {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 8px;
+}
+
+.ad-select {
+  width: 100%;
+  max-width: 300px;
+  padding: 10px 12px;
+  font-size: 14px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  background-color: white;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.ad-select:hover:not(:disabled) {
+  border-color: #0066cc;
+}
+
+.ad-select:focus {
+  outline: none;
+  border-color: #0066cc;
+  box-shadow: 0 0 0 3px rgba(0, 102, 204, 0.1);
+}
+
+.ad-select:disabled {
+  background-color: #f5f5f5;
+  color: #999;
+  cursor: not-allowed;
+}
+
+.ad-options-section {
+  margin-bottom: 25px;
+  padding: 20px 0;
+  border-top: 1px solid #f0f0f0;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.ad-options-section h4 {
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
+  margin: 0 0 16px 0;
+}
+
+.ad-option {
+  margin-bottom: 20px;
+}
+
+.ad-option:last-child {
+  margin-bottom: 0;
+}
+
+.ad-checkbox-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.ad-checkbox-group input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  accent-color: #0066cc;
+}
+
+.ad-checkbox-group input[type="checkbox"]:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.ad-checkbox-group label {
+  font-size: 14px;
+  cursor: pointer;
+  margin: 0;
+}
+
+.ad-checkbox-group label strong {
+  font-weight: 600;
+  color: #333;
+}
+
+.ad-option-description {
+  font-size: 13px;
+  color: #666;
+  margin: 8px 0 0 26px;
+  line-height: 1.4;
+}
+
+.ad-deadline-input {
+  margin-top: 12px;
+  margin-left: 26px;
+}
+
+.ad-deadline-input p {
+  font-size: 13px;
+  color: #555;
+  margin: 0 0 8px 0;
+}
+
+.ad-input-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ad-input {
+  width: 80px;
+  padding: 8px 10px;
+  font-size: 14px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  text-align: center;
+  transition: all 0.3s ease;
+}
+
+.ad-input:focus {
+  outline: none;
+  border-color: #0066cc;
+  box-shadow: 0 0 0 3px rgba(0, 102, 204, 0.1);
+}
+
+.ad-input:disabled {
+  background-color: #f5f5f5;
+  color: #999;
+  cursor: not-allowed;
+}
+
+.ad-input-group span {
+  font-size: 14px;
+  color: #666;
+}
+
+.ad-buttons {
+  display: flex;
+  gap: 12px;
+  margin: 25px 0;
+}
+
+.ad-btn-cancel,
+.ad-btn-save {
+  padding: 10px 24px;
+  font-size: 13px;
+  font-weight: 600;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.ad-btn-cancel {
+  color: #0066cc;
+  background-color: white;
+  border: 1px solid #ddd;
+}
+
+.ad-btn-cancel:hover {
+  background-color: #f5f5f5;
+  border-color: #0066cc;
+}
+
+.ad-btn-cancel:active {
+  background-color: #efefef;
+}
+
+.ad-btn-save {
+  color: white;
+  background-color: #0066cc;
+}
+
+.ad-btn-save:hover:not(:disabled) {
+  background-color: #0052a3;
+  box-shadow: 0 2px 8px rgba(0, 102, 204, 0.3);
+  transform: translateY(-1px);
+}
+
+.ad-btn-save:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: 0 1px 4px rgba(0, 102, 204, 0.2);
+}
+
+.ad-btn-save:disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.ad-info-box {
+  display: flex;
+  gap: 12px;
+  padding: 12px 16px;
+  background-color: #e3f2fd;
+  border-radius: 6px;
+  border-left: 4px solid #0066cc;
+}
+
+.ad-info-icon {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  color: #0066cc;
+  font-weight: bold;
+}
+
+.ad-info-box p {
+  font-size: 13px;
+  color: #0d47a1;
+  margin: 0;
+  line-height: 1.4;
+}
+
+@media (max-width: 768px) {
+  .ad-section {
+    padding: 20px;
+  }
+
+  .ad-select {
+    max-width: 100%;
+  }
+
+  .ad-buttons {
+    flex-direction: column;
+  }
+
+  .ad-btn-cancel,
+  .ad-btn-save {
+    width: 100%;
+  }
+}
