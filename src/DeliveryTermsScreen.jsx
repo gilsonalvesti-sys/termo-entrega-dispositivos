@@ -7,6 +7,9 @@ import AutomaticDelivery from "./AutomaticDelivery";
 function DeliveryTermsScreen({ terms, setTerms }) {
   const [searchTerm, setSearchTerm] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [acceptanceDeadline, setAcceptanceDeadline] = useState(false);
+  const [deadlineDays, setDeadlineDays] = useState("");
+  const [emailNotification, setEmailNotification] = useState(false);
 
   // Filter terms based on search
   const filteredTerms = terms.filter((term) =>
@@ -56,7 +59,7 @@ function DeliveryTermsScreen({ terms, setTerms }) {
     <div className="delivery-terms-container">
       <div className="header-section">
         <div className="breadcrumb">Empresas &gt; Configurações &gt; Termo de Entrega</div>
-        <h1>Configuração</h1>
+        <h1>Funcionalidades</h1>
       </div>
 
       <div className="controls-section">
@@ -108,6 +111,53 @@ function DeliveryTermsScreen({ terms, setTerms }) {
           </div>
         )}
       </div>
+
+      <section className="acceptance-deadline-section">
+        <div className="deadline-checkbox-group">
+          <input
+            type="checkbox"
+            id="term-acceptance-deadline"
+            checked={acceptanceDeadline}
+            onChange={(event) => setAcceptanceDeadline(event.target.checked)}
+          />
+          <label htmlFor="term-acceptance-deadline">
+            <strong>Definir prazo para aceite</strong>
+          </label>
+        </div>
+        {acceptanceDeadline && (
+          <div className="term-deadline-input">
+            <label htmlFor="term-deadline-days">Prazo em dias para o aceite de todos os termos:</label>
+            <div className="term-deadline-input-group">
+              <input
+                type="number"
+                id="term-deadline-days"
+                value={deadlineDays}
+                onChange={(event) => setDeadlineDays(event.target.value)}
+                placeholder="___"
+                min="1"
+              />
+              <span>dias</span>
+            </div>
+          </div>
+        )}
+
+        <div className="notification-option">
+          <div className="deadline-checkbox-group">
+            <input
+              type="checkbox"
+              id="term-email-notification"
+              checked={emailNotification}
+              onChange={(event) => setEmailNotification(event.target.checked)}
+            />
+            <label htmlFor="term-email-notification">
+              <strong>Enviar e-mail de notificação</strong>
+            </label>
+          </div>
+          <p className="term-notification-description">
+            Será enviado um e-mail para os usuários com o link do Connect.
+          </p>
+        </div>
+      </section>
 
       <AutomaticDelivery />
 

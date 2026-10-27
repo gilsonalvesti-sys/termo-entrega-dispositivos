@@ -1,17 +1,16 @@
 import { useMemo, useState } from "react";
-import { demoDeliveryTerms, demoUsers } from "./usersData";
+import { demoUsers } from "./usersData";
+import ManageDeviceTerm from "./ManageDeviceTerm";
 import "./UsersManagementScreen.css";
 
 const categoryLabels = {
   device: "Dispositivos",
   line: "Linhas",
-  sim: "SIM cards",
 };
 
 const categoryTitle = {
   device: "Dispositivos",
   line: "Linhas",
-  sim: "SIM cards",
 };
 
 const formatDate = (value) => {
@@ -21,8 +20,23 @@ const formatDate = (value) => {
   return date.toLocaleDateString("pt-BR");
 };
 
+const normalizeTermStatus = (status) => {
+  if (status === "Aceito" || status === "Cancelado" || status === "Recusado") return status;
+  return "Pendente";
+};
+
+const getTermStatusDate = (term) => {
+  if (term.statusDate) return term.statusDate;
+  const status = normalizeTermStatus(term.termStatus);
+  if (status === "Aceito") return term.acceptedDate;
+  if (status === "Cancelado") {
+    return [...(term.events || [])].reverse().find((event) => event.type === "cancelled")?.date;
+  }
+  return null;
+};
+
 const getResourceSummary = (items = []) => {
-  const counts = { device: 0, line: 0, sim: 0 };
+  const counts = { device: 0, line: 0 };
 
   items.forEach((item) => {
     if (counts[item.category] !== undefined) {
@@ -40,36 +54,48 @@ const getBadgeClass = (value) => {
   const normalized = (value || "").toLowerCase();
   if (normalized.includes("aceito") || normalized.includes("enviado")) return "status-success";
   if (normalized.includes("pendente") || normalized.includes("em aberto")) return "status-pending";
-  if (normalized.includes("cancel")) return "status-cancelled";
+  if (normalized.includes("cancel") || normalized.includes("recus")) return "status-cancelled";
   return "status-default";
 };
 
-function UsersManagementScreen() {
+function UsersManagementScreen({
+  availableTerms = [],
+  deliveryTerms,
+  setDeliveryTerms,
+  inventoryUsers = [],
+  shipments = [],
+  onAddShipments,
+  onUpdateShipment,
+}) {
   const [users] = useState(demoUsers);
-  const [terms, setTerms] = useState(demoDeliveryTerms);
   const [searchTerm, setSearchTerm] = useState("");
   const [view, setView] = useState("list");
+  const [activeManagementTab, setActiveManagementTab] = useState("manage");
   const [selectedUserId, setSelectedUserId] = useState(null);
+  const [activeUserTab, setActiveUserTab] = useState("userData");
   const [selectedTermId, setSelectedTermId] = useState(null);
-  const [wizardStep, setWizardStep] = useState(1);
   const [wizardUserId, setWizardUserId] = useState(null);
-  const [wizardCategory, setWizardCategory] = useState("device");
-  const [wizardSearch, setWizardSearch] = useState({ device: "", line: "", sim: "" });
-  const [wizardSelections, setWizardSelections] = useState({ device: [], line: [], sim: [] });
+  const [wizardSelections, setWizardSelections] = useState({ device: [], line: [] });
+  const [showTermReview, setShowTermReview] = useState(false);
   const [deliveryDate, setDeliveryDate] = useState(new Date().toISOString().slice(0, 10));
-  const [confirmationTermId, setConfirmationTermId] = useState(null);
+  const [selectedTemplateTermId, setSelectedTemplateTermId] = useState("");
+  const [operationMessage, setOperationMessage] = useState("");
   const [documentNotice, setDocumentNotice] = useState("");
 
   const selectedUser = users.find((user) => user.id === selectedUserId) || null;
   const currentUserTerms = useMemo(
     () =>
-      terms
+      deliveryTerms
         .filter((term) => term.userId === selectedUserId)
         .sort((a, b) => new Date(b.deliveryDate || b.issueDate) - new Date(a.deliveryDate || a.issueDate)),
-    [selectedUserId, terms]
+    [selectedUserId, deliveryTerms]
   );
 
-  const selectedTerm = terms.find((term) => term.id === selectedTermId) || null;
+  const selectedTerm = deliveryTerms.find((term) => term.id === selectedTermId) || null;
+  const activeAvailableTerms = availableTerms.filter((term) => term.status === "Ativo");
+  const selectedTemplateTerm = activeAvailableTerms.find(
+    (term) => String(term.id) === String(selectedTemplateTermId)
+  ) || null;
 
   const filteredUsers = users.filter((user) => {
     const query = searchTerm.trim().toLowerCase();
@@ -81,30 +107,23 @@ function UsersManagementScreen() {
     );
   });
 
-  const getUserCounts = (user) => ({
-    devices: user.devices.length,
-    lines: user.lines.length,
-    sims: user.sims.length,
-    terms: terms.filter((term) => term.userId === user.id).length,
-  });
-
   const getWizardOptions = (user) => ({
     device: (user?.devices || []).filter((device) => device.availableForDelivery),
     line: (user?.lines || []).filter((line) => line.availableForDelivery),
-    sim: (user?.sims || []).filter((sim) => sim.availableForDelivery),
   });
 
   const wizardOptions = getWizardOptions(users.find((user) => user.id === wizardUserId) || selectedUser);
   const selectionCounts = {
     device: wizardSelections.device.length,
     line: wizardSelections.line.length,
-    sim: wizardSelections.sim.length,
   };
 
   const totalSelectedItems = Object.values(selectionCounts).reduce((sum, count) => sum + count, 0);
 
   const openUserHistory = (userId) => {
     setSelectedUserId(userId);
+    setActiveUserTab("userData");
+    setOperationMessage("");
     setView("userHistory");
   };
 
@@ -117,12 +136,12 @@ function UsersManagementScreen() {
     const user = users.find((item) => item.id === userId);
     setSelectedUserId(userId);
     setWizardUserId(userId);
-    setWizardCategory("device");
-    setWizardSearch({ device: "", line: "", sim: "" });
-    setWizardSelections({ device: [], line: [], sim: [] });
+    setWizardSelections({ device: [], line: [] });
+    setShowTermReview(false);
     setDeliveryDate(new Date().toISOString().slice(0, 10));
+    setSelectedTemplateTermId("");
+    setOperationMessage("");
     setView("wizard");
-    setWizardStep(1);
     if (!user) return;
   };
 
@@ -137,13 +156,6 @@ function UsersManagementScreen() {
     });
   };
 
-  const removeWizardItem = (category, itemId) => {
-    setWizardSelections((previous) => ({
-      ...previous,
-      [category]: (previous[category] || []).filter((id) => id !== itemId),
-    }));
-  };
-
   const getSelectedItems = () => {
     const user = users.find((item) => item.id === wizardUserId || item.id === selectedUserId);
     const options = getWizardOptions(user);
@@ -155,30 +167,39 @@ function UsersManagementScreen() {
   };
 
   const handleGenerateTerm = () => {
-    if (!wizardUserId || totalSelectedItems === 0) return;
+    if (!wizardUserId || totalSelectedItems === 0 || !selectedTemplateTerm || !deliveryDate) return;
+    setShowTermReview(true);
+  };
 
+  const handleConfirmTermSend = () => {
     const user = users.find((item) => item.id === wizardUserId);
+    if (!user || !selectedTemplateTerm || totalSelectedItems === 0 || !deliveryDate) return;
     const selectedItems = getSelectedItems();
     const currentYear = new Date().getFullYear();
-    const currentCounter = terms.filter((term) => String(term.id).startsWith(`TE-${currentYear}-`)).length + 1;
+    const currentCounter = deliveryTerms.filter((term) => String(term.id).startsWith(`TE-${currentYear}-`)).length + 1;
     const generatedId = `TE-${currentYear}-${String(currentCounter).padStart(3, "0")}`;
-    const documentDate = new Date().toISOString().slice(0, 10);
+    const sentAt = new Date();
+    const documentDate = sentAt.toISOString().slice(0, 10);
     const generated = {
       id: generatedId,
       userId: user.id,
       recipientName: user.name,
       recipientEmail: user.email,
       company: user.company,
-      deliveryDate: deliveryDate || documentDate,
+      templateTermId: selectedTemplateTerm.id,
+      templateTermName: selectedTemplateTerm.name,
+      templateTermVersion: selectedTemplateTerm.version,
+      templateTermText: selectedTemplateTerm.text || "",
+      deliveryDate,
       issueDate: documentDate,
-      firstSendDate: null,
-      lastSendDate: null,
+      firstSendDate: documentDate,
+      lastSendDate: documentDate,
       acceptedDate: null,
-      termStatus: "Em aberto",
-      sendStatus: "Pendente",
+      termStatus: "Pendente",
+      sendStatus: "Enviado",
       document: {
-        fileName: `${generatedId}.pdf`,
-        generatedAt: documentDate,
+        fileName: null,
+        generatedAt: null,
         itemCount: selectedItems.length,
         available: false,
       },
@@ -188,34 +209,46 @@ function UsersManagementScreen() {
         label:
           item.category === "device"
             ? `${item.type} ${item.model}`
-            : item.category === "line"
-              ? item.number
-              : item.iccid,
+            : item.number,
       })),
       events: [
         { date: documentDate, type: "created", description: "Termo criado para o destinatário." },
-        {
-          date: documentDate,
-          type: "document",
-          description: "Geração do documento não foi realizada no projeto atual; estrutura pronta para integração futura.",
-        },
+        { date: documentDate, type: "sent", description: "Termo enviado ao usuário." },
       ],
     };
 
-    setTerms((previous) => [generated, ...previous]);
-    setConfirmationTermId(generated.id);
-    setSelectedTermId(generated.id);
-    setView("confirmation");
+    setDeliveryTerms((previous) => [generated, ...previous]);
+    onAddShipments(
+      selectedItems.map((item) => ({
+        imei: item.category === "device" ? item.imei || item.id : item.number,
+        deviceModel: item.category === "device" ? item.model || item.label : item.number,
+        deviceType: item.category === "device" ? item.type || "Dispositivo" : "Linha",
+        userName: user.name,
+        userLogin: user.login || user.email,
+        term: `${selectedTemplateTerm.name} (v${selectedTemplateTerm.version})`,
+        sendDate: sentAt.toISOString(),
+        status: "Pendente",
+        statusDate: "",
+        returnDate: "",
+        receivedBy: "",
+      }))
+    );
+    setOperationMessage(`Termo ${generated.id} gerado e enviado ao usuário.`);
+    setShowTermReview(false);
+    setActiveUserTab("terms");
+    setView("userHistory");
+    window.alert("Termo gerado e enviado ao usuário");
   };
 
   const confirmCancelTerm = (termId) => {
-    setTerms((previous) =>
+    setDeliveryTerms((previous) =>
       previous.map((term) => {
         if (term.id !== termId) return term;
         const now = new Date().toISOString().slice(0, 10);
         return {
           ...term,
           termStatus: "Cancelado",
+          statusDate: now,
           sendStatus: "Cancelado",
           document: { ...term.document, available: false },
           events: [
@@ -228,7 +261,7 @@ function UsersManagementScreen() {
   };
 
   const resendTerm = (termId) => {
-    setTerms((previous) =>
+    setDeliveryTerms((previous) =>
       previous.map((term) => {
         if (term.id !== termId) return term;
         const now = new Date().toISOString().slice(0, 10);
@@ -245,8 +278,8 @@ function UsersManagementScreen() {
     );
   };
 
-  const handleDocumentAction = (action) => {
-    if (!selectedTerm) return;
+  const handleDocumentAction = (action, term = selectedTerm) => {
+    if (!term) return;
 
     if (action === "view") {
       setDocumentNotice(
@@ -257,23 +290,25 @@ function UsersManagementScreen() {
 
     if (action === "download") {
       const payload = [
-        `Termo: ${selectedTerm.id}`,
-        `Destinatário: ${selectedTerm.recipientName}`,
-        `E-mail: ${selectedTerm.recipientEmail}`,
-        `Itens: ${selectedTerm.items.length}`,
-        `Data de geração: ${formatDate(selectedTerm.document?.generatedAt)}`,
+        `Termo: ${term.id}`,
+        `Destinatário: ${term.recipientName}`,
+        `E-mail: ${term.recipientEmail}`,
+        `Itens: ${term.items.length}`,
+        `Data de geração: ${formatDate(term.document?.generatedAt)}`,
       ].join("\n");
 
       const blob = new Blob([payload], { type: "text/plain;charset=utf-8" });
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = `${selectedTerm.id}-documento.txt`;
+      link.download = `${term.id}-documento.txt`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
-      setDocumentNotice("Download do documento demonstrativo realizado como arquivo de texto, sem simulação de PDF real.");
+      if (term.id === selectedTerm?.id) {
+        setDocumentNotice("Download do documento demonstrativo realizado como arquivo de texto, sem simulação de PDF real.");
+      }
     }
   };
 
@@ -284,6 +319,29 @@ function UsersManagementScreen() {
         <h1>Usuários</h1>
       </div>
 
+      <div className="category-tabs users-management-tabs" role="tablist" aria-label="Seções de usuários">
+        <button
+          type="button"
+          role="tab"
+          aria-selected={activeManagementTab === "manage"}
+          className={activeManagementTab === "manage" ? "tab active" : "tab"}
+          onClick={() => setActiveManagementTab("manage")}
+        >
+          Gerenciar
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={activeManagementTab === "delivery"}
+          className={activeManagementTab === "delivery" ? "tab active" : "tab"}
+          onClick={() => setActiveManagementTab("delivery")}
+        >
+          Termo de Entrega
+        </button>
+      </div>
+
+      {activeManagementTab === "manage" ? (
+      <>
       <div className="toolbar">
         <input
           type="text"
@@ -300,31 +358,21 @@ function UsersManagementScreen() {
             <tr>
               <th>Nome</th>
               <th>E-mail</th>
-              <th>Cargo</th>
-              <th>Dispositivos</th>
-              <th>Linhas</th>
-              <th>SIM cards</th>
               <th>Termos</th>
-              <th>Ação</th>
             </tr>
           </thead>
           <tbody>
             {filteredUsers.map((user) => {
-              const counts = getUserCounts(user);
+              const termCount = deliveryTerms.filter((term) => term.userId === user.id).length;
               return (
                 <tr key={user.id}>
-                  <td>{user.name}</td>
-                  <td>{user.email}</td>
-                  <td>{user.role || "—"}</td>
-                  <td>{counts.devices}</td>
-                  <td>{counts.lines}</td>
-                  <td>{counts.sims}</td>
-                  <td>{counts.terms}</td>
                   <td>
                     <button className="action-link" onClick={() => openUserHistory(user.id)}>
-                      Consultar
+                      {user.name}
                     </button>
                   </td>
+                  <td>{user.email}</td>
+                  <td>{termCount}</td>
                 </tr>
               );
             })}
@@ -336,6 +384,17 @@ function UsersManagementScreen() {
           </div>
         )}
       </div>
+      </>
+      ) : (
+        <ManageDeviceTerm
+          terms={availableTerms}
+          inventoryUsers={inventoryUsers}
+          shipments={shipments}
+          onAddShipments={onAddShipments}
+          onUpdateShipment={onUpdateShipment}
+          deliveryManagementOnly
+        />
+      )}
     </div>
   );
 
@@ -346,44 +405,23 @@ function UsersManagementScreen() {
       <div className="users-screen">
         <div className="page-header">
           <div className="breadcrumb">Usuários &gt; Histórico</div>
-          <h1>{selectedUser.name}</h1>
+          <h1>Histórico</h1>
         </div>
 
-        <div className="user-summary card">
-          <div className="summary-row">
-            <div>
-              <label>Nome</label>
-              <strong>{selectedUser.name}</strong>
-            </div>
-            <div>
-              <label>E-mail</label>
-              <strong>{selectedUser.email}</strong>
-            </div>
-            <div>
-              <label>Empresa</label>
-              <strong>{selectedUser.company || "—"}</strong>
-            </div>
-          </div>
+        <div className="history-overview">
+          <section className="card history-user-card">
+            <div><strong>{selectedUser.name}</strong></div>
+            <div><strong>{selectedUser.email}</strong></div>
+            <div><strong>{selectedUser.login || selectedUser.email}</strong></div>
+          </section>
+          <section className="card history-counts-card" aria-label="Totais do usuário">
+            <div><label>Dispositivos</label><strong>{selectedUser.devices.length}</strong></div>
+            <div><label>Linhas</label><strong>{selectedUser.lines.length}</strong></div>
+            <div><label>Termos emitidos</label><strong>{currentUserTerms.length}</strong></div>
+          </section>
+        </div>
 
-          <div className="summary-row compact">
-            <div>
-              <label>Dispositivos</label>
-              <strong>{selectedUser.devices.length}</strong>
-            </div>
-            <div>
-              <label>Linhas</label>
-              <strong>{selectedUser.lines.length}</strong>
-            </div>
-            <div>
-              <label>SIM cards</label>
-              <strong>{selectedUser.sims.length}</strong>
-            </div>
-            <div>
-              <label>Termos emitidos</label>
-              <strong>{currentUserTerms.length}</strong>
-            </div>
-          </div>
-
+        <div className="history-actions">
           <div className="action-row">
             <button className="primary-btn" onClick={() => openNewDelivery(selectedUser.id)}>
               Nova entrega
@@ -394,54 +432,180 @@ function UsersManagementScreen() {
           </div>
         </div>
 
-        <div className="section-header">
-          <h2>Histórico de termos</h2>
+        <div className="category-tabs history-tabs" role="tablist" aria-label="Histórico do usuário">
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeUserTab === "userData"}
+            className={activeUserTab === "userData" ? "tab active" : "tab"}
+            onClick={() => setActiveUserTab("userData")}
+          >
+            Dados do Usuário
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeUserTab === "resources"}
+            className={activeUserTab === "resources" ? "tab active" : "tab"}
+            onClick={() => setActiveUserTab("resources")}
+          >
+            Recursos vinculados
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeUserTab === "terms"}
+            className={activeUserTab === "terms" ? "tab active" : "tab"}
+            onClick={() => setActiveUserTab("terms")}
+          >
+            Termos
+          </button>
         </div>
 
-        {currentUserTerms.length === 0 ? (
-          <div className="empty-state card">
-            <p>Nenhum termo registrado para este usuário.</p>
-            <button className="primary-btn" onClick={() => openNewDelivery(selectedUser.id)}>
-              Nova entrega
-            </button>
+        {activeUserTab === "userData" && (
+          <section className="card detail-card" role="tabpanel">
+            <h2>Dados do Usuário</h2>
+            <div className="detail-grid user-data-grid">
+              <div><label>Nome</label><strong>{selectedUser.name}</strong></div>
+              <div><label>E-mail</label><strong>{selectedUser.email}</strong></div>
+              <div><label>Matrícula</label><strong>{selectedUser.employeeId || "—"}</strong></div>
+              <div><label>Gestor</label><strong>{selectedUser.manager || "—"}</strong></div>
+              <div><label>Status</label><strong>{selectedUser.status || "—"}</strong></div>
+              <div><label>Empresa</label><strong>{selectedUser.company || "—"}</strong></div>
+              <div><label>Cargo</label><strong>{selectedUser.role || "—"}</strong></div>
+              <div><label>Grupo de usuários</label><strong>{selectedUser.userGroup || "—"}</strong></div>
+              <div className="user-data-address"><label>Endereço</label><strong>{selectedUser.address || "—"}</strong></div>
+            </div>
+          </section>
+        )}
+
+        {activeUserTab === "resources" && (
+          <div className="linked-resources" role="tabpanel">
+            <section className="card detail-card">
+              <h2>Linhas</h2>
+              {selectedUser.lines.length === 0 ? (
+                <p className="empty-inline">Nenhuma linha vinculada a este usuário.</p>
+              ) : (
+                <div className="table-wrapper">
+                  <table className="data-table">
+                    <thead><tr><th>Número</th><th>Ramal</th><th>Operadora</th></tr></thead>
+                    <tbody>
+                      {selectedUser.lines.map((line) => (
+                        <tr key={line.id}>
+                          <td>{line.number}</td><td>{line.extension || line.ramal || "—"}</td>
+                          <td>{line.operator || "—"}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </section>
+            <section className="card detail-card">
+              <h2>Dispositivos</h2>
+              {selectedUser.devices.length === 0 ? (
+                <p className="empty-inline">Nenhum dispositivo vinculado a este usuário.</p>
+              ) : (
+                <div className="table-wrapper">
+                  <table className="data-table">
+                    <thead><tr><th>IMEI/ID</th><th>Tipo</th><th>Modelo</th><th>Fabricante</th><th>Status</th></tr></thead>
+                    <tbody>
+                      {selectedUser.devices.map((device) => (
+                        <tr key={device.id}>
+                          <td>{device.imei || device.id || "—"}</td><td>{device.type}</td><td>{device.model}</td>
+                          <td>{device.manufacturer || device.model?.split(" ")[0] || "—"}</td>
+                          <td>{device.status || "Vinculado"}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </section>
           </div>
-        ) : (
-          <div className="table-wrapper">
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>Identificador</th>
-                  <th>Data de entrega</th>
-                  <th>Itens</th>
-                  <th>Recursos</th>
-                  <th>Aceite</th>
-                  <th>Envio</th>
-                  <th>Ação</th>
-                </tr>
-              </thead>
-              <tbody>
-                {currentUserTerms.map((term) => (
-                  <tr key={term.id}>
-                    <td>{term.id}</td>
-                    <td>{formatDate(term.deliveryDate)}</td>
-                    <td>{term.items.length}</td>
-                    <td>{getResourceSummary(term.items)}</td>
-                    <td>
-                      <span className={`badge ${getBadgeClass(term.termStatus)}`}>{term.termStatus}</span>
-                    </td>
-                    <td>
-                      <span className={`badge ${getBadgeClass(term.sendStatus)}`}>{term.sendStatus}</span>
-                    </td>
-                    <td>
-                      <button className="action-link" onClick={() => openTermDetail(term.id)}>
-                        Consultar
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+        )}
+
+        {activeUserTab === "terms" && (
+          <>
+            <div className="section-header"><h2>Histórico de termos</h2></div>
+            {operationMessage && <p className="operation-message">{operationMessage}</p>}
+            {currentUserTerms.length === 0 ? (
+              <div className="empty-state card"><p>Nenhum termo registrado para este usuário.</p></div>
+            ) : (
+              <div className="table-wrapper">
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th>Termo</th><th>Data de entrega</th><th>Data de envio</th><th>Itens</th>
+                      <th>Recursos</th><th>Status</th><th>Data Status</th><th>Ações</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {currentUserTerms.map((term) => (
+                      <tr key={term.id}>
+                        <td>
+                          {term.templateTermName
+                            ? `${term.templateTermName}${term.templateTermVersion ? ` (v${term.templateTermVersion})` : ""}`
+                            : "Termo de Entrega"}
+                        </td>
+                        <td>{formatDate(term.deliveryDate)}</td>
+                        <td>{formatDate(term.firstSendDate || term.lastSendDate)}</td>
+                        <td>{term.items.filter((item) => item.category !== "sim").length}</td>
+                        <td>{getResourceSummary(term.items)}</td>
+                        <td>
+                          {(() => {
+                            const status = normalizeTermStatus(term.termStatus);
+                            return <span className={`badge ${getBadgeClass(status)}`}>{status}</span>;
+                          })()}
+                        </td>
+                        <td>{formatDate(getTermStatusDate(term))}</td>
+                        <td>
+                          <div className="term-row-actions">
+                            <button
+                              type="button"
+                              className="icon-action"
+                              aria-label={`Consultar termo ${term.id}`}
+                              title="Consultar"
+                              onClick={() => openTermDetail(term.id)}
+                            >
+                              <svg viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z" />
+                                <circle cx="12" cy="12" r="3" />
+                              </svg>
+                            </button>
+                            <button
+                              type="button"
+                              className="icon-action"
+                              aria-label={`Baixar termo ${term.id}`}
+                              title="Baixar"
+                              disabled={!term.document?.available}
+                              onClick={() => handleDocumentAction("download", term)}
+                            >
+                              <svg viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M12 3v12m0 0 5-5m-5 5-5-5M4 20h16" />
+                              </svg>
+                            </button>
+                            <button
+                              type="button"
+                              className="icon-action icon-action-danger"
+                              aria-label={`Cancelar termo ${term.id}`}
+                              title="Cancelar"
+                              disabled={["Cancelado", "Aceito", "Recusado"].includes(normalizeTermStatus(term.termStatus))}
+                              onClick={() => confirmCancelTerm(term.id)}
+                            >
+                              <svg viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="m6 6 12 12M18 6 6 18" />
+                              </svg>
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </>
         )}
       </div>
     );
@@ -449,6 +613,7 @@ function UsersManagementScreen() {
 
   const renderTermDetail = () => {
     if (!selectedTerm) return null;
+    const selectedTermStatus = normalizeTermStatus(selectedTerm.termStatus);
 
     return (
       <div className="users-screen">
@@ -466,6 +631,14 @@ function UsersManagementScreen() {
             <div>
               <label>E-mail</label>
               <strong>{selectedTerm.recipientEmail}</strong>
+            </div>
+            <div>
+              <label>Termo selecionado</label>
+              <strong>
+                {selectedTerm.templateTermName
+                  ? `${selectedTerm.templateTermName} (v${selectedTerm.templateTermVersion})`
+                  : "—"}
+              </strong>
             </div>
             <div>
               <label>Empresa</label>
@@ -496,7 +669,7 @@ function UsersManagementScreen() {
             </div>
             <div>
               <label>Situação do termo</label>
-              <strong>{selectedTerm.termStatus}</strong>
+              <strong>{selectedTermStatus}</strong>
             </div>
             <div>
               <label>Situação do envio</label>
@@ -581,7 +754,7 @@ function UsersManagementScreen() {
               Reenviar
             </button>
           )}
-          {selectedTerm.termStatus !== "Cancelado" && selectedTerm.termStatus !== "Aceito" && (
+          {selectedTermStatus === "Pendente" && (
             <button className="danger-btn" onClick={() => confirmCancelTerm(selectedTerm.id)}>
               Cancelar
             </button>
@@ -595,18 +768,23 @@ function UsersManagementScreen() {
     if (!selectedUser) return null;
 
     const availableOptions = wizardOptions;
-    const currentItems = availableOptions[wizardCategory] || [];
-    const filteredItems = currentItems.filter((item) => {
-      const query = (wizardSearch[wizardCategory] || "").toLowerCase();
-      if (!query) return true;
-      if (wizardCategory === "device") {
-        return `${item.type} ${item.model} ${item.id}`.toLowerCase().includes(query);
-      }
-      if (wizardCategory === "line") {
-        return `${item.number} ${item.operator} ${item.id}`.toLowerCase().includes(query);
-      }
-      return `${item.iccid} ${item.operator} ${item.id}`.toLowerCase().includes(query);
-    });
+    const selectableItems = Object.entries(availableOptions).flatMap(([category, items]) =>
+      items.map((item) => ({ category, item }))
+    );
+    const selectedItems = getSelectedItems();
+    const allItemsSelected =
+      selectableItems.length > 0 &&
+      selectableItems.every(({ category, item }) => wizardSelections[category].includes(item.id));
+    const toggleSelectAll = () => {
+      setWizardSelections(
+        allItemsSelected
+          ? { device: [], line: [] }
+          : {
+              device: availableOptions.device.map((item) => item.id),
+              line: availableOptions.line.map((item) => item.id),
+            }
+      );
+    };
 
     return (
       <div className="users-screen">
@@ -616,229 +794,202 @@ function UsersManagementScreen() {
         </div>
 
         <div className="wizard-shell card">
-          <div className="wizard-steps">
-            <span className={wizardStep === 1 ? "step active" : "step"}>1. Selecionar itens</span>
-            <span className={wizardStep === 2 ? "step active" : "step"}>2. Conferir entrega</span>
-            <span className={wizardStep === 3 ? "step active" : "step"}>3. Confirmar</span>
+          <div className="wizard-term-header">
+            <div className="wizard-field">
+              <label htmlFor="delivery-template-term">Termo</label>
+              <select
+                id="delivery-template-term"
+                value={selectedTemplateTermId}
+                onChange={(event) => setSelectedTemplateTermId(event.target.value)}
+              >
+                <option value="">Selecione um termo</option>
+                {activeAvailableTerms.map((term) => (
+                  <option key={term.id} value={term.id}>
+                    {term.name} (v{term.version})
+                  </option>
+                ))}
+              </select>
+              {activeAvailableTerms.length === 0 && (
+                <small>Nenhum termo ativo foi cadastrado em Empresas.</small>
+              )}
+            </div>
+            <div className="wizard-field">
+              <label htmlFor="delivery-date">Data de Entrega</label>
+              <input
+                id="delivery-date"
+                type="date"
+                value={deliveryDate}
+                onChange={(event) => setDeliveryDate(event.target.value)}
+              />
+            </div>
           </div>
 
-          {wizardStep === 1 && (
-            <>
-              <div className="selection-header">
-                <h2>Destinatário</h2>
-                <strong>{selectedUser.name} · {selectedUser.email}</strong>
-              </div>
+          <div className="selection-header">
+            <h2>Destinatário</h2>
+            <strong>{selectedUser.name} · {selectedUser.email}</strong>
+          </div>
 
-              <div className="category-tabs">
-                {Object.keys(categoryLabels).map((category) => (
-                  <button
-                    key={category}
-                    className={wizardCategory === category ? "tab active" : "tab"}
-                    onClick={() => setWizardCategory(category)}
-                  >
-                    {categoryLabels[category]} ({selectionCounts[category]})
-                  </button>
-                ))}
-              </div>
+          <label className="select-all-option">
+            <input
+              type="checkbox"
+              checked={allItemsSelected}
+              disabled={selectableItems.length === 0}
+              onChange={toggleSelectAll}
+            />
+            <span>Selecionar todos os itens vinculados</span>
+          </label>
 
-              <div className="search-box-row">
-                <input
-                  type="text"
-                  value={wizardSearch[wizardCategory] || ""}
-                  onChange={(event) =>
-                    setWizardSearch((previous) => ({
-                      ...previous,
-                      [wizardCategory]: event.target.value,
-                    }))
-                  }
-                  placeholder={`Buscar ${categoryLabels[wizardCategory].toLowerCase()}...`}
-                />
-              </div>
-
-              <div className="selection-list">
-                {filteredItems.length > 0 ? (
-                  filteredItems.map((item) => {
-                    const selected = (wizardSelections[wizardCategory] || []).includes(item.id);
-                    return (
-                      <label key={item.id} className={selected ? "select-item selected" : "select-item"}>
-                        <input
-                          type="checkbox"
-                          checked={selected}
-                          onChange={() => toggleWizardItem(wizardCategory, item.id)}
-                        />
-                        <div className="item-meta">
-                          <strong>{item.id}</strong>
-                          {wizardCategory === "device" && (
-                            <span>
-                              {item.type} · {item.model}
-                            </span>
-                          )}
-                          {wizardCategory === "line" && (
-                            <span>
-                              {item.number} · {item.operator}
-                            </span>
-                          )}
-                          {wizardCategory === "sim" && (
-                            <span>
-                              {item.iccid} · {item.operator}
-                            </span>
-                          )}
-                        </div>
-                      </label>
-                    );
-                  })
-                ) : (
-                  <p className="empty-inline">Nenhum item disponível para entrega nesta categoria.</p>
-                )}
-              </div>
-
-              <div className="summary-panel">
-                <h3>Resumo da seleção</h3>
-                <div className="summary-grid">
-                  <div>
-                    <span>Dispositivos</span>
-                    <strong>{selectionCounts.device}</strong>
-                  </div>
-                  <div>
-                    <span>Linhas</span>
-                    <strong>{selectionCounts.line}</strong>
-                  </div>
-                  <div>
-                    <span>SIM cards</span>
-                    <strong>{selectionCounts.sim}</strong>
-                  </div>
-                  <div>
-                    <span>Total</span>
-                    <strong>{totalSelectedItems}</strong>
-                  </div>
+          <div className="wizard-resource-sections">
+            <section className="card detail-card">
+              <h2>Linhas</h2>
+              {availableOptions.line.length === 0 ? (
+                <p className="empty-inline">Nenhuma linha vinculada e disponível para entrega.</p>
+              ) : (
+                <div className="table-wrapper">
+                  <table className="data-table wizard-resource-table">
+                    <thead>
+                      <tr><th>Selecionar</th><th>Número</th><th>Ramal</th><th>Operadora</th></tr>
+                    </thead>
+                    <tbody>
+                      {availableOptions.line.map((line) => (
+                        <tr key={line.id}>
+                          <td>
+                            <input
+                              type="checkbox"
+                              aria-label={`Selecionar linha ${line.number}`}
+                              checked={wizardSelections.line.includes(line.id)}
+                              onChange={() => toggleWizardItem("line", line.id)}
+                            />
+                          </td>
+                          <td>{line.number}</td><td>{line.extension || line.ramal || "—"}</td>
+                          <td>{line.operator || "—"}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
+              )}
+            </section>
 
-                <div className="selected-tags">
-                  {Object.keys(categoryLabels).map((category) =>
-                    (wizardSelections[category] || []).map((itemId) => (
-                      <button
-                        key={`${category}-${itemId}`}
-                        type="button"
-                        className="tag-remove"
-                        onClick={() => removeWizardItem(category, itemId)}
-                      >
-                        {itemId} ×
-                      </button>
-                    ))
-                  )}
+            <section className="card detail-card">
+              <h2>Dispositivos</h2>
+              {availableOptions.device.length === 0 ? (
+                <p className="empty-inline">Nenhum dispositivo vinculado e disponível para entrega.</p>
+              ) : (
+                <div className="table-wrapper">
+                  <table className="data-table wizard-resource-table">
+                    <thead>
+                      <tr>
+                        <th>Selecionar</th><th>IMEI/ID</th><th>Tipo</th><th>Modelo</th><th>Fabricante</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {availableOptions.device.map((device) => (
+                        <tr key={device.id}>
+                          <td>
+                            <input
+                              type="checkbox"
+                              aria-label={`Selecionar dispositivo ${device.imei || device.id}`}
+                              checked={wizardSelections.device.includes(device.id)}
+                              onChange={() => toggleWizardItem("device", device.id)}
+                            />
+                          </td>
+                          <td>{device.imei || device.id}</td><td>{device.type}</td><td>{device.model}</td>
+                          <td>{device.manufacturer || device.model?.split(" ")[0] || "—"}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
+              )}
+            </section>
+          </div>
 
-                <div className="wizard-actions">
-                  <button className="secondary-btn" onClick={() => setView("userHistory")}>
-                    Cancelar
-                  </button>
-                  <button
-                    className="primary-btn"
-                    disabled={totalSelectedItems === 0}
-                    onClick={() => setWizardStep(2)}
-                  >
-                    Avançar
-                  </button>
+          <div className="summary-panel">
+            <h3>Resumo da seleção</h3>
+            <div className="summary-grid">
+              <div>
+                <span>Dispositivos</span>
+                <strong>{selectionCounts.device}</strong>
+              </div>
+              <div>
+                <span>Linhas</span>
+                <strong>{selectionCounts.line}</strong>
+              </div>
+              <div>
+                <span>Total</span>
+                <strong>{totalSelectedItems}</strong>
+              </div>
+            </div>
+
+            {totalSelectedItems === 0 && (
+              <p className="empty-inline">Selecione pelo menos um item para continuar.</p>
+            )}
+
+            <div className="wizard-actions">
+              <button className="secondary-btn" onClick={() => setView("userHistory")}>
+                Cancelar
+              </button>
+              <button
+                className="primary-btn"
+                disabled={totalSelectedItems === 0 || !selectedTemplateTerm || !deliveryDate}
+                onClick={handleGenerateTerm}
+              >
+                Gerar Termo
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {showTermReview && (
+          <div className="term-review-backdrop">
+            <section
+              className="term-review-modal card"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="term-review-title"
+            >
+              <h2 id="term-review-title">Confirmar geração do termo</h2>
+              <div className="term-review-summary">
+                <div><label>Usuário</label><strong>{selectedUser.name}</strong></div>
+                <div><label>E-mail</label><strong>{selectedUser.email}</strong></div>
+                <div><label>Termo</label><strong>{selectedTemplateTerm?.name} (v{selectedTemplateTerm?.version})</strong></div>
+                <div><label>Data de entrega</label><strong>{formatDate(deliveryDate)}</strong></div>
+              </div>
+              <h3>Itens selecionados ({selectedItems.length})</h3>
+              {selectedItems.length ? (
+                <div className="table-wrapper">
+                  <table className="data-table term-review-table">
+                    <thead>
+                      <tr><th>Tipo</th><th>Identificador</th><th>Ramal</th><th>Modelo</th><th>Operadora</th></tr>
+                    </thead>
+                    <tbody>
+                      {selectedItems.map((item) => (
+                        <tr key={`${item.category}-${item.id}`}>
+                          <td>{categoryLabels[item.category]}</td>
+                          <td>{item.category === "device" ? item.imei || item.id : item.number}</td>
+                          <td>{item.category === "line" ? item.extension || item.ramal || "—" : "—"}</td>
+                          <td>{item.category === "device" ? item.model || "—" : "—"}</td>
+                          <td>{item.category === "line" ? item.operator || "—" : "—"}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
-              </div>
-            </>
-          )}
-
-          {wizardStep === 2 && (
-            <>
-              <div className="selection-header">
-                <h2>Conferir entrega</h2>
-              </div>
-
-              <div className="review-grid">
-                <div className="review-box">
-                  <label>Destinatário</label>
-                  <strong>{selectedUser.name}</strong>
-                  <small>{selectedUser.email}</small>
-                </div>
-                <div className="review-box">
-                  <label>Data da entrega</label>
-                  <input type="date" value={deliveryDate} onChange={(event) => setDeliveryDate(event.target.value)} />
-                </div>
-              </div>
-
-              <div className="review-items">
-                {getSelectedItems().map((item, idx) => (
-                  <div key={`${item.category}-${item.id}-${idx}`} className="review-item">
-                    <span>{categoryLabels[item.category]}</span>
-                    <strong>{item.id}</strong>
-                    <small>
-                      {item.category === "device" ? `${item.type} · ${item.model}` : item.category === "line" ? item.number : item.iccid}
-                    </small>
-                  </div>
-                ))}
-              </div>
-
+              ) : (
+                <p className="empty-inline">Nenhum item selecionado.</p>
+              )}
               <div className="wizard-actions">
-                <button className="secondary-btn" onClick={() => setWizardStep(1)}>
-                  Voltar e editar
+                <button className="secondary-btn" onClick={() => setShowTermReview(false)}>
+                  Voltar
                 </button>
-                <button className="secondary-btn" onClick={() => setView("userHistory")}>
-                  Cancelar
-                </button>
-                <button className="primary-btn" onClick={handleGenerateTerm}>
-                  Gerar termo
+                <button className="primary-btn" onClick={handleConfirmTermSend}>
+                  Enviar
                 </button>
               </div>
-            </>
-          )}
-        </div>
-      </div>
-    );
-  };
-
-  const renderConfirmation = () => {
-    const term = terms.find((item) => item.id === confirmationTermId) || null;
-    if (!term) return null;
-
-    return (
-      <div className="users-screen">
-        <div className="page-header">
-          <div className="breadcrumb">Usuários &gt; Confirmação</div>
-          <h1>Confirmação</h1>
-        </div>
-
-        <div className="card confirmation-card">
-          <h2>Termo criado com sucesso</h2>
-          <div className="confirmation-line">
-            <label>Identificador</label>
-            <strong>{term.id}</strong>
+            </section>
           </div>
-          <div className="confirmation-line">
-            <label>Destinatário</label>
-            <strong>{term.recipientName}</strong>
-          </div>
-          <div className="confirmation-line">
-            <label>Quantidade de itens</label>
-            <strong>{term.items.length}</strong>
-          </div>
-          <div className="confirmation-line">
-            <label>Resumo dos recursos</label>
-            <strong>{getResourceSummary(term.items)}</strong>
-          </div>
-          <div className="confirmation-line">
-            <label>Situação do documento</label>
-            <strong>Não gerado no projeto atual</strong>
-          </div>
-          <div className="confirmation-line">
-            <label>Situação do envio</label>
-            <strong>{term.sendStatus}</strong>
-          </div>
-
-          <div className="action-row">
-            <button className="primary-btn" onClick={() => openTermDetail(term.id)}>
-              Consultar termo
-            </button>
-            <button className="secondary-btn" onClick={() => setView("userHistory")}>
-              Voltar à ficha do usuário
-            </button>
-          </div>
-        </div>
+        )}
       </div>
     );
   };
@@ -846,7 +997,6 @@ function UsersManagementScreen() {
   if (view === "userHistory") return renderUserHistory();
   if (view === "termDetail") return renderTermDetail();
   if (view === "wizard") return renderCreateWizard();
-  if (view === "confirmation") return renderConfirmation();
   return renderUserList();
 }
 

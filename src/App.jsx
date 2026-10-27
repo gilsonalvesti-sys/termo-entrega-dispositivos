@@ -2,6 +2,8 @@ import { useState } from "react";
 import DeliveryTermsScreen from "./DeliveryTermsScreen";
 import ManageDeviceTerm from "./ManageDeviceTerm";
 import UsersManagementScreen from "./UsersManagementScreen";
+import MyDevicesScreen from "./MyDevicesScreen";
+import { demoDeliveryTerms, demoUsers } from "./usersData";
 import "./Sidebar.css";
 
 const initialTerms = [
@@ -81,6 +83,7 @@ const initialInventoryUsers = [
 function App() {
   const [screen, setScreen] = useState("termo");
   const [terms, setTerms] = useState(initialTerms);
+  const [deliveryTerms, setDeliveryTerms] = useState(demoDeliveryTerms);
   const [shipments, setShipments] = useState([]);
   const [inventoryUsers] = useState(initialInventoryUsers);
 
@@ -126,6 +129,13 @@ function App() {
           >
             Usuários
           </button>
+
+          <button
+            className={`sidebar-btn ${screen === "meus-dispositivos" ? "active" : ""}`}
+            onClick={() => setScreen("meus-dispositivos")}
+          >
+            Meus Dispositivos
+          </button>
         </div>
       </aside>
 
@@ -137,7 +147,21 @@ function App() {
             onAddShipment={addShipments}
           />
         ) : screen === "usuarios" ? (
-          <UsersManagementScreen />
+          <UsersManagementScreen
+            availableTerms={terms}
+            deliveryTerms={deliveryTerms}
+            setDeliveryTerms={setDeliveryTerms}
+            inventoryUsers={inventoryUsers}
+            shipments={shipments}
+            onAddShipments={addShipments}
+            onUpdateShipment={updateShipment}
+          />
+        ) : screen === "meus-dispositivos" ? (
+          <MyDevicesScreen
+            user={demoUsers[0]}
+            terms={deliveryTerms}
+            setTerms={setDeliveryTerms}
+          />
         ) : (
           <ManageDeviceTerm
             terms={terms}

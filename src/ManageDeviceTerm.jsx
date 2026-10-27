@@ -12,8 +12,15 @@ const sampleLines = [
   { id: 6, operator: "TIM", line: "(51) 99432-6506", userName: "Paulo Santos" },
 ];
 
-function ManageDeviceTerm({ terms, inventoryUsers, shipments, onAddShipments, onUpdateShipment }) {
-  const [activeTab, setActiveTab] = useState("dispositivo");
+function ManageDeviceTerm({
+  terms,
+  inventoryUsers,
+  shipments,
+  onAddShipments,
+  onUpdateShipment,
+  deliveryManagementOnly = false,
+}) {
+  const [activeTab, setActiveTab] = useState(deliveryManagementOnly ? "termo" : "dispositivo");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
@@ -414,17 +421,19 @@ function ManageDeviceTerm({ terms, inventoryUsers, shipments, onAddShipments, on
   };
 
   return (
-    <div className="manage-device-term-container">
-      <div className="mdt-header">
-        <div className="mdt-line1">Inventário</div>
-      </div>
+    <div className={`manage-device-term-container${deliveryManagementOnly ? " delivery-management-only" : ""}`}>
+      {!deliveryManagementOnly && (
+        <div className="mdt-header">
+          <div className="mdt-line1">Inventário</div>
+        </div>
+      )}
 
-      <div className="inventory-tabs" role="tablist" aria-label="Seções do inventário">
-        {[
-          ["dispositivo", "Dispositivo"],
-          ["linhas", "Linhas"],
-          ["termo", "Termo de Entrega"],
-        ].map(([tab, label]) => (
+      {!deliveryManagementOnly && (
+        <div className="inventory-tabs" role="tablist" aria-label="Seções do inventário">
+          {[
+            ["dispositivo", "Dispositivo"],
+            ["linhas", "Linhas"],
+          ].map(([tab, label]) => (
           <button
             key={tab}
             id={`inventory-tab-${tab}`}
@@ -437,8 +446,9 @@ function ManageDeviceTerm({ terms, inventoryUsers, shipments, onAddShipments, on
           >
             {label}
           </button>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
 
       {activeTab === "dispositivo" && (
         <section
@@ -483,7 +493,7 @@ function ManageDeviceTerm({ terms, inventoryUsers, shipments, onAddShipments, on
         </section>
       )}
 
-      {activeTab === "termo" && (
+      {(deliveryManagementOnly || activeTab === "termo") && (
         <div
           id="inventory-panel-termo"
           role="tabpanel"

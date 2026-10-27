@@ -91,6 +91,79 @@
   box-shadow: 0 1px 4px rgba(0, 102, 204, 0.2);
 }
 
+.acceptance-deadline-section {
+  margin: 24px 0;
+  padding: 18px 20px;
+  background: white;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+}
+
+.deadline-checkbox-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.deadline-checkbox-group input {
+  width: 18px;
+  height: 18px;
+  accent-color: #0066cc;
+}
+
+.deadline-checkbox-group label {
+  color: #333;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.notification-option {
+  margin-top: 20px;
+}
+
+.term-notification-description {
+  margin: 8px 0 0 26px;
+  color: #666;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.term-deadline-input {
+  margin: 14px 0 0 26px;
+}
+
+.term-deadline-input > label {
+  display: block;
+  margin-bottom: 8px;
+  color: #555;
+  font-size: 13px;
+}
+
+.term-deadline-input-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.term-deadline-input-group input {
+  width: 80px;
+  padding: 8px 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  text-align: center;
+}
+
+.term-deadline-input-group input:focus {
+  outline: none;
+  border-color: #0066cc;
+  box-shadow: 0 0 0 3px rgba(0, 102, 204, 0.1);
+}
+
+.term-deadline-input-group span {
+  color: #666;
+  font-size: 14px;
+}
+
 .terms-grid-container {
   background: white;
   border-radius: 8px;

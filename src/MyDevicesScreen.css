@@ -1,0 +1,96 @@
+.my-devices-screen {
+  width: 100%;
+  max-width: 1220px;
+  margin: 0 auto;
+  color: #1f2937;
+}
+
+.my-devices-tabs {
+  margin: 20px 0;
+  border-bottom: 1px solid #e5e7eb;
+  padding-bottom: 12px;
+}
+
+.my-devices-profile {
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+}
+
+.my-devices-address {
+  grid-column: span 2;
+}
+
+.my-device-term-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.my-device-term-actions .icon-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  padding: 7px;
+  border: 1px solid #dbe3ee;
+  border-radius: 8px;
+  background: #fff;
+  color: #1d4ed8;
+  cursor: pointer;
+}
+
+.my-device-term-actions .icon-action:hover {
+  border-color: #bfdbfe;
+  background: #eff6ff;
+}
+
+.my-device-term-actions svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2;
+}
+
+.my-device-term-actions .icon-action-accept {
+  color: #15803d;
+}
+
+.my-device-term-actions .icon-action-accept:hover {
+  border-color: #bbf7d0;
+  background: #f0fdf4;
+}
+
+.my-device-term-actions .icon-action-danger {
+  color: #b91c1c;
+}
+
+.my-device-term-actions .icon-action-danger:hover {
+  border-color: #fecaca;
+  background: #fef2f2;
+}
+
+.my-device-term-text {
+  margin-top: 20px;
+}
+
+.my-device-term-text h3 {
+  margin: 0 0 10px;
+}
+
+.my-device-term-text > div {
+  padding: 14px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #f8fafc;
+  color: #334155;
+  white-space: pre-wrap;
+}
+
+@media (max-width: 768px) {
+  .my-devices-address {
+    grid-column: auto;
+  }
+}

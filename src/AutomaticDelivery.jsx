@@ -7,9 +7,6 @@ import "./DeliveryHistory.css";
 function AutomaticDelivery() {
   const [isEnabled, setIsEnabled] = useState(false);
   const [selectedTerm, setSelectedTerm] = useState("");
-  const [emailNotification, setEmailNotification] = useState(false);
-  const [acceptanceDeadline, setAcceptanceDeadline] = useState(false);
-  const [deadlineDays, setDeadlineDays] = useState("");
   const [history, setHistory] = useState([]);
   const [previousState, setPreviousState] = useState(false);
 
@@ -20,7 +17,7 @@ function AutomaticDelivery() {
     { id: 4, name: "Termo de Revisão" },
   ];
 
-  const handleToggle = (id) => {
+  const handleToggle = () => {
     setIsEnabled(!isEnabled);
   };
 
@@ -38,21 +35,12 @@ function AutomaticDelivery() {
       setHistory([newEntry, ...history]);
       setPreviousState(isEnabled);
     }
-    console.log({
-      isEnabled,
-      selectedTerm,
-      emailNotification,
-      acceptanceDeadline,
-      deadlineDays,
-    });
+    console.log({ isEnabled, selectedTerm });
   };
 
   const handleCancel = () => {
     setIsEnabled(previousState);
     setSelectedTerm("");
-    setEmailNotification(false);
-    setAcceptanceDeadline(false);
-    setDeadlineDays("");
   };
 
   return (
@@ -84,60 +72,6 @@ function AutomaticDelivery() {
               </option>
             ))}
           </select>
-        </div>
-
-        <div className="ad-options-section">
-          <h4>Opções de envio</h4>
-
-          <div className="ad-option">
-            <div className="ad-checkbox-group">
-              <input
-                type="checkbox"
-                id="email-notification"
-                checked={emailNotification}
-                onChange={(e) => setEmailNotification(e.target.checked)}
-                disabled={!isEnabled}
-              />
-              <label htmlFor="email-notification">
-                <strong>Enviar e-mail de notificação</strong>
-              </label>
-            </div>
-            <p className="ad-option-description">
-              Será enviado um e-mail para os usuários com o link do Connect
-            </p>
-          </div>
-
-          <div className="ad-option">
-            <div className="ad-checkbox-group">
-              <input
-                type="checkbox"
-                id="deadline"
-                checked={acceptanceDeadline}
-                onChange={(e) => setAcceptanceDeadline(e.target.checked)}
-                disabled={!isEnabled}
-              />
-              <label htmlFor="deadline">
-                <strong>Definir prazo para aceite</strong>
-              </label>
-            </div>
-            {acceptanceDeadline && (
-              <div className="ad-deadline-input">
-                <p>Prazo em dias para o termo ser aceito:</p>
-                <div className="ad-input-group">
-                  <input
-                    type="number"
-                    value={deadlineDays}
-                    onChange={(e) => setDeadlineDays(e.target.value)}
-                    placeholder="___"
-                    className="ad-input"
-                    min="1"
-                    disabled={!isEnabled}
-                  />
-                  <span>dias</span>
-                </div>
-              </div>
-            )}
-          </div>
         </div>
 
         <div className="ad-buttons">

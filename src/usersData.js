@@ -3,8 +3,15 @@ export const demoUsers = [
     id: 1,
     name: "João Silva",
     email: "joao@empresa.com",
+    login: "joao@empresa.com",
     role: "Analista de TI",
     company: "Empresa Alpha",
+    costCenter: "CC-1001 · Tecnologia",
+    employeeId: "EMP-001",
+    manager: "Fernanda Costa",
+    status: "Ativo",
+    address: "Av. Paulista, 1000 - São Paulo/SP",
+    userGroup: "Tecnologia",
     devices: [
       {
         id: "DEV-1001",
@@ -44,8 +51,15 @@ export const demoUsers = [
     id: 2,
     name: "Maria Souza",
     email: "maria@empresa.com",
+    login: "maria@empresa.com",
     role: "Coordenadora de Operações",
     company: "Empresa Beta",
+    costCenter: "CC-2001 · Operações",
+    employeeId: "EMP-002",
+    manager: "Roberto Almeida",
+    status: "Ativo",
+    address: "Rua das Flores, 250 - São Paulo/SP",
+    userGroup: "Operações",
     devices: [
       {
         id: "DEV-2001",
@@ -91,8 +105,15 @@ export const demoUsers = [
     id: 3,
     name: "Carlos Lima",
     email: "carlos@empresa.com",
+    login: "carlos@empresa.com",
     role: "Analista de Campo",
     company: "Empresa Gama",
+    costCenter: "CC-3001 · Campo",
+    employeeId: "EMP-003",
+    manager: "Patrícia Santos",
+    status: "Ativo",
+    address: "Av. Central, 500 - Rio de Janeiro/RJ",
+    userGroup: "Campo",
     devices: [
       {
         id: "DEV-3001",
@@ -124,8 +145,15 @@ export const demoUsers = [
     id: 4,
     name: "Ana Pereira",
     email: "ana@empresa.com",
+    login: "ana@empresa.com",
     role: "Gerente de Projetos",
     company: "Empresa Delta",
+    costCenter: "CC-4001 · Projetos",
+    employeeId: "EMP-004",
+    manager: "Marcos Oliveira",
+    status: "Ativo",
+    address: "Rua das Acácias, 75 - Belo Horizonte/MG",
+    userGroup: "Projetos",
     devices: [
       {
         id: "DEV-4001",
@@ -180,13 +208,12 @@ export const demoDeliveryTerms = [
     document: {
       fileName: "TE-2024-001.pdf",
       generatedAt: "2024-04-11",
-      itemCount: 3,
+      itemCount: 2,
       available: true,
     },
     items: [
       { category: "device", identifier: "DEV-1001", label: "Dell Latitude 5440" },
       { category: "line", identifier: "LIN-2001", label: "(11) 99912-3401" },
-      { category: "sim", identifier: "SIM-3001", label: "89610123456789012345" },
     ],
     events: [
       { date: "2024-04-10", type: "created", description: "Termo criado para o destinatário." },
@@ -211,7 +238,7 @@ export const demoDeliveryTerms = [
     document: {
       fileName: "TE-2024-005.pdf",
       generatedAt: "2024-09-15",
-      itemCount: 2,
+      itemCount: 1,
       available: true,
     },
     items: [
@@ -244,7 +271,6 @@ export const demoDeliveryTerms = [
     },
     items: [
       { category: "device", identifier: "DEV-2001", label: "Apple iPad 10" },
-      { category: "sim", identifier: "SIM-3002", label: "89610123456789012346" },
     ],
     events: [
       { date: "2024-06-20", type: "created", description: "Termo criado para o destinatário." },
