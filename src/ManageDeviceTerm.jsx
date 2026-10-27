@@ -12,12 +12,38 @@ const sampleLines = [
   { id: 6, operator: "TIM", line: "(51) 99432-6506", userName: "Paulo Santos" },
 ];
 
+const parseDelimitedRow = (row, delimiter) => {
+  const cells = [];
+  let value = "";
+  let quoted = false;
+
+  for (let index = 0; index < row.length; index += 1) {
+    const character = row[index];
+    if (character === '"' && row[index + 1] === '"') {
+      value += '"';
+      index += 1;
+    } else if (character === '"') {
+      quoted = !quoted;
+    } else if (character === delimiter && !quoted) {
+      cells.push(value.trim());
+      value = "";
+    } else {
+      value += character;
+    }
+  }
+
+  cells.push(value.trim());
+  return cells;
+};
+
 function ManageDeviceTerm({
   terms,
   inventoryUsers,
   shipments,
   onAddShipments,
   onUpdateShipment,
+  deliveryUsers = inventoryUsers,
+  onAddDeliveryTerms,
   deliveryManagementOnly = false,
 }) {
   const [activeTab, setActiveTab] = useState(deliveryManagementOnly ? "termo" : "dispositivo");
@@ -27,8 +53,9 @@ function ManageDeviceTerm({
   const [showSendConfirmation, setShowSendConfirmation] = useState(false);
   const [selectedTermId, setSelectedTermId] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedUsers, setSelectedUsers] = useState([]);
+  const [selectedResources, setSelectedResources] = useState([]);
   const [pendingShipments, setPendingShipments] = useState([]);
+  const [pendingDeliveryResources, setPendingDeliveryResources] = useState([]);
   const [uploadedFileName, setUploadedFileName] = useState("");
   const [uploadFile, setUploadFile] = useState(null);
   const [uploadError, setUploadError] = useState("");
@@ -46,28 +73,51 @@ function ManageDeviceTerm({
     [terms]
   );
 
-  const users = inventoryUsers;
+  const users = deliveryUsers;
 
   const filteredUsers = users.filter((user) => {
-    const query = searchQuery.toLowerCase();
+    const query = searchQuery.trim().toLowerCase();
     return (
-      user.name.toLowerCase().includes(query) ||
-      user.email.toLowerCase().includes(query) ||
-      user.imei.toLowerCase().includes(query) ||
-      user.device.toLowerCase().includes(query)
+      (user.name || "").toLowerCase().includes(query) ||
+      (user.email || "").toLowerCase().includes(query) ||
+      (user.login || "").toLowerCase().includes(query) ||
+      (user.imei || "").toLowerCase().includes(query) ||
+      (user.device || "").toLowerCase().includes(query) ||
+      (user.devices || []).some((device) =>
+        [device.id, device.imei, device.model, device.type]
+          .filter(Boolean)
+          .some((value) => String(value).toLowerCase().includes(query))
+      ) ||
+      (user.lines || []).some((line) =>
+        [line.number, line.extension, line.ramal, line.operator]
+          .filter(Boolean)
+          .some((value) => String(value).toLowerCase().includes(query))
+      )
     );
   });
 
-  const handleUserToggle = (userId) => {
-    setSelectedUsers((prev) =>
-      prev.includes(userId)
-        ? prev.filter((id) => id !== userId)
-        : [...prev, userId]
+  const filteredResources = filteredUsers.flatMap((user) => [
+    ...(user.devices || [])
+      .filter((device) => device.availableForDelivery)
+      .map((device) => ({ user, resource: device, category: "device" })),
+    ...(user.lines || [])
+      .filter((line) => line.availableForDelivery)
+      .map((line) => ({ user, resource: line, category: "line" })),
+  ]);
+
+  const getResourceKey = (userId, category, resourceId) =>
+    `${userId}:${category}:${resourceId}`;
+
+  const handleResourceToggle = (resourceKey) => {
+    setSelectedResources((previous) =>
+      previous.includes(resourceKey)
+        ? previous.filter((key) => key !== resourceKey)
+        : [...previous, resourceKey]
     );
   };
 
   const downloadTemplate = () => {
-    const csvContent = "Login,IMEI\n";
+    const csvContent = "Login,IMEI/ID,Linha,Ramal\n";
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
     const link = document.createElement("a");
     link.href = URL.createObjectURL(blob);
@@ -102,24 +152,28 @@ function ManageDeviceTerm({
           return;
         }
 
-        const headers = rows[0]
-          .split(/,|;/)
-          .map((col) => col.trim().toLowerCase().replace(/^"|"$/g, ""));
+        const delimiter = rows[0].includes(";") ? ";" : ",";
+        const headers = parseDelimitedRow(rows[0], delimiter)
+          .map((col) => col.replace(/^\uFEFF/, "").toLowerCase());
         const loginIndex = headers.indexOf("login");
-        const imeiIndex = headers.indexOf("imei");
+        const imeiIdIndex = headers.indexOf("imei/id") !== -1
+          ? headers.indexOf("imei/id")
+          : headers.indexOf("imei");
+        const lineIndex = headers.indexOf("linha");
+        const extensionIndex = headers.indexOf("ramal");
 
-        if (loginIndex === -1 || imeiIndex === -1) {
-          reject("O arquivo precisa conter as colunas Login e IMEI.");
+        if (loginIndex === -1 || imeiIdIndex === -1 || lineIndex === -1 || extensionIndex === -1) {
+          reject("O arquivo precisa conter as colunas Login, IMEI/ID, Linha e Ramal.");
           return;
         }
 
         const entries = rows.slice(1).map((row) => {
-          const cells = row
-            .split(/,|;/)
-            .map((cell) => cell.trim().replace(/^"|"$/g, ""));
+          const cells = parseDelimitedRow(row, delimiter);
           return {
             login: cells[loginIndex] || "",
-            imei: cells[imeiIndex] || "",
+            imeiId: cells[imeiIdIndex] || "",
+            line: cells[lineIndex] || "",
+            extension: cells[extensionIndex] || "",
           };
         });
 
@@ -138,24 +192,47 @@ function ManageDeviceTerm({
 
     try {
       const entries = await parseCsv(uploadFile);
-      const matchedIds = entries.reduce((acc, entry) => {
-        const email = entry.login.toLowerCase();
-        const imei = entry.imei.toLowerCase();
+      const matchedResourceKeys = entries.flatMap((entry) => {
+        const login = entry.login.trim().toLowerCase();
         const user = users.find(
-          (u) => u.email.toLowerCase() === email && u.imei.toLowerCase() === imei
+          (item) => (item.login || item.email || "").toLowerCase() === login
         );
-        if (user && !acc.includes(user.id)) {
-          acc.push(user.id);
-        }
-        return acc;
-      }, []);
+        if (!user) return [];
 
-      if (matchedIds.length > 0) {
-        setSelectedUsers((prev) => Array.from(new Set([...prev, ...matchedIds])));
-        setUploadMessage(`${matchedIds.length} usuário(s) marcados com sucesso.`);
+        const requestedImeiId = entry.imeiId.trim().toLowerCase();
+        const requestedLine = entry.line.trim().toLowerCase();
+        const requestedExtension = entry.extension.trim().toLowerCase();
+        const resourceKeys = [];
+
+        if (requestedImeiId) {
+          (user.devices || []).filter((device) => device.availableForDelivery).forEach((device) => {
+            if ([device.imei, device.id].filter(Boolean).some((value) => String(value).toLowerCase() === requestedImeiId)) {
+              resourceKeys.push(getResourceKey(user.id, "device", device.id));
+            }
+          });
+        }
+
+        if (requestedLine || requestedExtension) {
+          (user.lines || []).filter((line) => line.availableForDelivery).forEach((line) => {
+            const lineMatches = !requestedLine || (line.number || "").toLowerCase() === requestedLine;
+            const extensionMatches = !requestedExtension ||
+              [(line.extension || ""), (line.ramal || "")]
+                    .some((value) => String(value).toLowerCase() === requestedExtension);
+            if (lineMatches && extensionMatches) {
+              resourceKeys.push(getResourceKey(user.id, "line", line.id));
+            }
+          });
+        }
+        return resourceKeys;
+      });
+
+      if (matchedResourceKeys.length > 0) {
+        const uniqueResourceKeys = Array.from(new Set(matchedResourceKeys));
+        setSelectedResources((previous) => Array.from(new Set([...previous, ...uniqueResourceKeys])));
+        setUploadMessage(`${uniqueResourceKeys.length} recurso(s) marcados com sucesso.`);
         setShowUploadModal(false);
       } else {
-        setUploadMessage("Nenhum usuário encontrado com a combinação Login + IMEI informada.");
+        setUploadMessage("Nenhum recurso correspondente foi encontrado para o Login e os identificadores informados.");
       }
       setUploadError("");
     } catch (error) {
@@ -372,23 +449,49 @@ function ManageDeviceTerm({
       setUploadError("Selecione um termo antes de enviar.");
       return;
     }
-    if (selectedUsers.length === 0) {
-      setUploadError("Selecione pelo menos um usuário para enviar.");
+    const selectedEntries = users.flatMap((user) => [
+      ...(user.devices || [])
+        .filter((device) => selectedResources.includes(getResourceKey(user.id, "device", device.id)))
+        .map((device) => ({ user, resource: device, category: "device" })),
+      ...(user.lines || [])
+        .filter((line) => selectedResources.includes(getResourceKey(user.id, "line", line.id)))
+        .map((line) => ({ user, resource: line, category: "line" })),
+    ]);
+    if (selectedEntries.length === 0) {
+      setUploadError("Selecione pelo menos um recurso para enviar.");
       return;
     }
 
     const selectedTerm = activeTerms.find((term) => term.id === Number(selectedTermId));
-    const shipments = selectedUsers.map((userId) => {
-      const user = users.find((u) => u.id === userId);
+    const sentAt = new Date().toISOString();
+    const selectedByUser = selectedEntries.reduce((grouped, entry) => {
+      if (!grouped.has(entry.user.id)) {
+        grouped.set(entry.user.id, { user: entry.user, resources: [] });
+      }
+      grouped.get(entry.user.id).resources.push(entry);
+      return grouped;
+    }, new Map());
+    const pendingDeliveryResources = Array.from(selectedByUser.values());
+    const shipments = selectedEntries.map(({ user, resource, category }, index) => {
+      const ramal = category === "line" ? resource.extension || resource.ramal || "" : "";
+      const shipmentResource = {
+        type: category === "device" ? "Dispositivo" : ramal ? "Ramal" : "Linha",
+        identifier: category === "device"
+          ? resource.imei || resource.id
+          : resource.number || resource.id,
+        ramal,
+        model: category === "device" ? resource.model || "" : "",
+      };
       return {
-        id: `${userId}-${Date.now()}`,
-        imei: user?.imei || "",
-        deviceModel: user?.device || "",
-        deviceType: "Dispositivo",
-        userName: user?.name || "",
-        userLogin: user?.login || user?.email || "",
+        id: `${user.id}-${Date.now()}-${index}`,
+        resources: [shipmentResource],
+        imei: shipmentResource.identifier,
+        deviceModel: shipmentResource.model,
+        deviceType: shipmentResource.type,
+        userName: user.name || "",
+        userLogin: user.login || user.email || "",
         term: selectedTerm?.name || "",
-        sendDate: new Date().toISOString(),
+        sendDate: sentAt,
         status: "Pendente",
         statusDate: "",
         returnDate: "",
@@ -397,19 +500,67 @@ function ManageDeviceTerm({
     });
 
     setPendingShipments(shipments);
+    setPendingDeliveryResources(pendingDeliveryResources);
     setShowSendConfirmation(true);
     setUploadError("");
   };
 
   const confirmSend = () => {
     onAddShipments(pendingShipments);
+    if (onAddDeliveryTerms) {
+      const selectedTerm = activeTerms.find((term) => term.id === Number(selectedTermId));
+      const deliveryDate = new Date().toISOString().slice(0, 10);
+      const generatedTerms = pendingDeliveryResources.map(({ user, resources }, index) => {
+        const items = resources.map(({ resource, category }) => ({
+          category,
+          identifier: category === "device"
+            ? resource.imei || resource.id
+            : resource.number || resource.id,
+          label: category === "device"
+            ? `${resource.type || "Dispositivo"} ${resource.model || ""}`.trim()
+            : resource.number,
+        }));
+        const generatedId = `TE-${new Date().getFullYear()}-${Date.now()}-${index}`;
+        return {
+          id: generatedId,
+          userId: user.id,
+          recipientName: user.name,
+          recipientEmail: user.email,
+          company: user.company || "",
+          templateTermId: selectedTerm?.id,
+          templateTermName: selectedTerm?.name || "",
+          templateTermVersion: selectedTerm?.version || "",
+          templateTermText: selectedTerm?.text || "",
+          deliveryDate,
+          issueDate: deliveryDate,
+          firstSendDate: deliveryDate,
+          lastSendDate: deliveryDate,
+          acceptedDate: null,
+          termStatus: "Pendente",
+          sendStatus: "Enviado",
+          document: {
+            fileName: null,
+            generatedAt: null,
+            itemCount: items.length,
+            available: false,
+          },
+          items,
+          events: [
+            { date: deliveryDate, type: "created", description: "Termo criado para o destinatário." },
+            { date: deliveryDate, type: "sent", description: "Termo enviado ao usuário." },
+          ],
+        };
+      });
+      if (generatedTerms.length) onAddDeliveryTerms((previous) => [...generatedTerms, ...previous]);
+    }
     setShowSendConfirmation(false);
     setShowConfirmation(true);
     setIsModalOpen(false);
     setSelectedTermId("");
     setSearchQuery("");
-    setSelectedUsers([]);
+    setSelectedResources([]);
     setPendingShipments([]);
+    setPendingDeliveryResources([]);
     setUploadedFileName("");
     setUploadFile(null);
     setUploadMessage("");
@@ -590,28 +741,45 @@ function ManageDeviceTerm({
                   <thead>
                     <tr>
                       <th />
-                      <th>Nome usuário</th>
-                      <th>e-mail</th>
-                      <th>IMEI</th>
-                      <th>nome dispositivo</th>
+                      <th>Nome Usuário</th>
+                      <th>Login</th>
+                      <th>Tipo</th>
+                      <th>Identificador</th>
+                      <th>Ramal</th>
+                      <th>Modelo</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredUsers.map((user) => (
-                      <tr key={user.id}>
-                        <td>
-                          <input
-                            type="checkbox"
-                            checked={selectedUsers.includes(user.id)}
-                            onChange={() => handleUserToggle(user.id)}
-                          />
-                        </td>
-                        <td>{user.name}</td>
-                        <td>{user.email}</td>
-                        <td>{user.imei}</td>
-                        <td>{user.device}</td>
-                      </tr>
-                    ))}
+                    {filteredResources.map(({ user, resource, category }) => {
+                      const resourceKey = getResourceKey(user.id, category, resource.id);
+                      return (
+                        <tr key={resourceKey}>
+                          <td>
+                            <input
+                              type="checkbox"
+                              aria-label={`Selecionar ${category === "device" ? "dispositivo" : "linha"} para ${user.name}`}
+                              checked={selectedResources.includes(resourceKey)}
+                              onChange={() => handleResourceToggle(resourceKey)}
+                            />
+                          </td>
+                          <td>{user.name}</td>
+                          <td>{user.login || user.email || "—"}</td>
+                          <td>
+                            {category === "device"
+                              ? "Dispositivo"
+                              : resource.extension || resource.ramal
+                                ? "Ramal"
+                                : "Linha"}
+                          </td>
+                          <td>{category === "device" ? resource.imei || resource.id : resource.number || "—"}</td>
+                          <td>{category === "line" ? resource.extension || resource.ramal || "—" : "—"}</td>
+                          <td>{category === "device" ? resource.model || "—" : "—"}</td>
+                        </tr>
+                      );
+                    })}
+                    {filteredResources.length === 0 && (
+                      <tr><td colSpan="7" className="no-data">Nenhum recurso disponível para envio.</td></tr>
+                    )}
                   </tbody>
                 </table>
               </div>

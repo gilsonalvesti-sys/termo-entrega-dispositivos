@@ -1,6 +1,16 @@
 import { useMemo, useState } from "react";
 import "./ShipmentManagement.css";
 
+const getShipmentResources = (shipment) =>
+  shipment.resources?.length
+    ? shipment.resources
+    : [{
+        type: shipment.deviceType || "",
+        identifier: shipment.imei || "",
+        ramal: "",
+        model: shipment.deviceModel || "",
+      }];
+
 function ShipmentManagement({ shipments, inventoryUsers, onUpdateShipment }) {
   const [searchQuery, setSearchQuery] = useState("");
   const [actionType, setActionType] = useState(null);
@@ -15,16 +25,20 @@ function ShipmentManagement({ shipments, inventoryUsers, onUpdateShipment }) {
     if (!query) return shipments;
     return shipments.filter((shipment) =>
       [
-        shipment.imei,
-        shipment.deviceModel,
-        shipment.deviceType,
         shipment.userName,
+        shipment.userLogin,
         shipment.term,
         shipment.status,
         shipment.receivedBy,
+        ...getShipmentResources(shipment).flatMap((resource) => [
+          resource.type,
+          resource.identifier,
+          resource.ramal,
+          resource.model,
+        ]),
       ]
         .filter(Boolean)
-        .some((field) => field.toLowerCase().includes(query))
+        .some((field) => String(field).toLowerCase().includes(query))
     );
   }, [searchQuery, shipments]);
 
@@ -113,10 +127,12 @@ function ShipmentManagement({ shipments, inventoryUsers, onUpdateShipment }) {
         <table className="shipment-grid">
           <thead>
             <tr>
-              <th>IMEI</th>
-              <th>Modelo do Dispositivo</th>
-              <th>Tipo do dispositivo</th>
-              <th>Nome usuário</th>
+              <th>Nome Usuário</th>
+              <th>Login</th>
+              <th>Tipo</th>
+              <th>Identificador</th>
+              <th>Ramal</th>
+              <th>Modelo</th>
               <th>Termo</th>
               <th>Data Envio</th>
               <th>Status</th>
@@ -129,17 +145,43 @@ function ShipmentManagement({ shipments, inventoryUsers, onUpdateShipment }) {
           <tbody>
             {filteredShipments.length === 0 ? (
               <tr>
-                <td colSpan="11" className="no-data">
+                <td colSpan="13" className="no-data">
                   Nenhum envio registrado.
                 </td>
               </tr>
             ) : (
               filteredShipments.map((shipment) => (
                 <tr key={shipment.id}>
-                  <td>{shipment.imei}</td>
-                  <td>{shipment.deviceModel}</td>
-                  <td>{shipment.deviceType}</td>
                   <td>{shipment.userName}</td>
+                  <td>{shipment.userLogin || "—"}</td>
+                  <td>
+                    <div className="shipment-resource-values">
+                      {getShipmentResources(shipment).map((resource, index) => (
+                        <span key={`${resource.identifier}-${index}`}>{resource.type || "—"}</span>
+                      ))}
+                    </div>
+                  </td>
+                  <td>
+                    <div className="shipment-resource-values">
+                      {getShipmentResources(shipment).map((resource, index) => (
+                        <span key={`${resource.identifier}-${index}`}>{resource.identifier || "—"}</span>
+                      ))}
+                    </div>
+                  </td>
+                  <td>
+                    <div className="shipment-resource-values">
+                      {getShipmentResources(shipment).map((resource, index) => (
+                        <span key={`${resource.identifier}-${index}`}>{resource.ramal || "—"}</span>
+                      ))}
+                    </div>
+                  </td>
+                  <td>
+                    <div className="shipment-resource-values">
+                      {getShipmentResources(shipment).map((resource, index) => (
+                        <span key={`${resource.identifier}-${index}`}>{resource.model || "—"}</span>
+                      ))}
+                    </div>
+                  </td>
                   <td>{shipment.term}</td>
                   <td>{formatDate(shipment.sendDate)}</td>
                   <td>{shipment.status}</td>

@@ -64,6 +64,17 @@
   color: #555;
 }
 
+.shipment-resource-values {
+  display: grid;
+  gap: 6px;
+  min-width: 90px;
+}
+
+.shipment-resource-values span {
+  min-height: 20px;
+  overflow-wrap: anywhere;
+}
+
 .no-data {
   padding: 28px;
   text-align: center;

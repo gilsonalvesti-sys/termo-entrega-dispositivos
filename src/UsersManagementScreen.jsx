@@ -363,7 +363,6 @@ function UsersManagementScreen({
           </thead>
           <tbody>
             {filteredUsers.map((user) => {
-              const termCount = deliveryTerms.filter((term) => term.userId === user.id).length;
               return (
                 <tr key={user.id}>
                   <td>
@@ -372,7 +371,19 @@ function UsersManagementScreen({
                     </button>
                   </td>
                   <td>{user.email}</td>
-                  <td>{termCount}</td>
+                  <td>
+                    <button
+                      type="button"
+                      className="icon-action"
+                      aria-label={`Nova entrega para ${user.name}`}
+                      title="Nova entrega"
+                      onClick={() => openNewDelivery(user.id)}
+                    >
+                      <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="m22 2-7 20-4-9-9-4 20-7ZM22 2 11 13" />
+                      </svg>
+                    </button>
+                  </td>
                 </tr>
               );
             })}
@@ -392,6 +403,8 @@ function UsersManagementScreen({
           shipments={shipments}
           onAddShipments={onAddShipments}
           onUpdateShipment={onUpdateShipment}
+          deliveryUsers={users}
+          onAddDeliveryTerms={setDeliveryTerms}
           deliveryManagementOnly
         />
       )}

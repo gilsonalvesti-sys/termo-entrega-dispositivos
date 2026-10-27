@@ -372,7 +372,7 @@
 .users-grid {
   width: 100%;
   border-collapse: collapse;
-  min-width: 720px;
+  min-width: 1100px;
 }
 
 .users-grid th,
@@ -390,6 +390,34 @@
 
 .users-grid td {
   color: #333;
+}
+
+.users-grid input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: #0f6fff;
+  cursor: pointer;
+}
+
+.batch-resource-options {
+  display: grid;
+  gap: 8px;
+  min-width: 110px;
+}
+
+.batch-resource-options label {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  overflow-wrap: anywhere;
+}
+
+.batch-resource-options input {
+  flex: 0 0 auto;
+  width: 16px;
+  height: 16px;
+  margin: 1px 0 0;
+  accent-color: #0f6fff;
 }
 
 .modal-footer {
