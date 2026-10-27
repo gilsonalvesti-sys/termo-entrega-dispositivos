@@ -1,6 +1,7 @@
 import { useState } from "react";
 import DeliveryTermsScreen from "./DeliveryTermsScreen";
 import ManageDeviceTerm from "./ManageDeviceTerm";
+import UsersManagementScreen from "./UsersManagementScreen";
 import "./Sidebar.css";
 
 const initialTerms = [
@@ -118,6 +119,13 @@ function App() {
           >
             Inventário
           </button>
+
+          <button
+            className={`sidebar-btn ${screen === "usuarios" ? "active" : ""}`}
+            onClick={() => setScreen("usuarios")}
+          >
+            Usuários
+          </button>
         </div>
       </aside>
 
@@ -128,6 +136,8 @@ function App() {
             setTerms={setTerms}
             onAddShipment={addShipments}
           />
+        ) : screen === "usuarios" ? (
+          <UsersManagementScreen />
         ) : (
           <ManageDeviceTerm
             terms={terms}
