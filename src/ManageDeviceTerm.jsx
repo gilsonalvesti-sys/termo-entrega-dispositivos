@@ -3,6 +3,7 @@ import ShipmentManagement from "./ShipmentManagement";
 import "./ManageDeviceTerm.css";
 
 function ManageDeviceTerm({ terms, inventoryUsers, shipments, onAddShipments, onUpdateShipment, onOpenGerenciar }) {
+  const [activeTab, setActiveTab] = useState("dispositivo");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
@@ -405,46 +406,110 @@ function ManageDeviceTerm({ terms, inventoryUsers, shipments, onAddShipments, on
   return (
     <div className="manage-device-term-container">
       <div className="mdt-header">
-        <div className="mdt-line1">Inventário &gt; Dispositivo</div>
-        <div className="mdt-line2">
-          <button type="button" className="manage-link" onClick={onOpenGerenciar}>
-            Gerenciar
+        <div className="mdt-line1">Inventário</div>
+      </div>
+
+      <div className="inventory-tabs" role="tablist" aria-label="Seções do inventário">
+        {[
+          ["dispositivo", "Dispositivo"],
+          ["linhas", "Linhas"],
+          ["simcards", "Simcards"],
+          ["termo", "Termo de Entrega"],
+        ].map(([tab, label]) => (
+          <button
+            key={tab}
+            id={`inventory-tab-${tab}`}
+            type="button"
+            role="tab"
+            aria-selected={activeTab === tab}
+            aria-controls={`inventory-panel-${tab}`}
+            className={`inventory-tab ${activeTab === tab ? "active" : ""}`}
+            onClick={() => setActiveTab(tab)}
+          >
+            {label}
           </button>
-          <span className="pipe">|</span> <strong>Termo de Responsabilidade</strong>
-        </div>
+        ))}
       </div>
 
-      <div className="mdt-body">
-        <p>Área para gerenciar o Termo de Responsabilidade. Implemente aqui as ações necessárias.</p>
-      </div>
-
-      <div className="envios-section">
-        <div className="envios-header">
-          <h3>Envios</h3>
-          <button className="envios-action-btn" onClick={() => setIsModalOpen(true)}>
-            + Enviar Termo
-          </button>
-        </div>
-      </div>
-
-      <div className="gestao-envios-section">
-        <div className="gestao-envios-header">
-          <h3>Gestão de Envios</h3>
-          <div className="gestao-envios-actions">
-            <button className="import-table-btn" onClick={() => setShowImportModal(true)}>
-              IMPORTAR TABELA
-            </button>
-            <button className="export-table-btn" onClick={downloadExportCsv}>
-              EXPORTAR TABELA
+      {activeTab === "dispositivo" && (
+        <section
+          id="inventory-panel-dispositivo"
+          className="mdt-body"
+          role="tabpanel"
+          aria-labelledby="inventory-tab-dispositivo"
+        >
+          <div className="inventory-panel-header">
+            <h2>Dispositivo</h2>
+            <button type="button" className="manage-link" onClick={onOpenGerenciar}>
+              Gerenciar inventário
             </button>
           </div>
+          <p>Consulte e gerencie os dispositivos do inventário.</p>
+        </section>
+      )}
+
+      {activeTab === "linhas" && (
+        <section
+          id="inventory-panel-linhas"
+          className="mdt-body"
+          role="tabpanel"
+          aria-labelledby="inventory-tab-linhas"
+        >
+          <h2>Linhas</h2>
+          <p>A gestão de linhas será disponibilizada nesta área.</p>
+        </section>
+      )}
+
+      {activeTab === "simcards" && (
+        <section
+          id="inventory-panel-simcards"
+          className="mdt-body"
+          role="tabpanel"
+          aria-labelledby="inventory-tab-simcards"
+        >
+          <h2>Simcards</h2>
+          <p>A gestão de simcards será disponibilizada nesta área.</p>
+        </section>
+      )}
+
+      {activeTab === "termo" && (
+        <div
+          id="inventory-panel-termo"
+          role="tabpanel"
+          aria-labelledby="inventory-tab-termo"
+        >
+          <div className="inventory-panel-heading">
+            <h2>Termo de Entrega</h2>
+          </div>
+          <div className="envios-section">
+            <div className="envios-header">
+              <h3>Envios</h3>
+              <button className="envios-action-btn" onClick={() => setIsModalOpen(true)}>
+                + Enviar Termo
+              </button>
+            </div>
+          </div>
+
+          <div className="gestao-envios-section">
+            <div className="gestao-envios-header">
+              <h3>Gestão de Envios</h3>
+              <div className="gestao-envios-actions">
+                <button className="import-table-btn" onClick={() => setShowImportModal(true)}>
+                  IMPORTAR TABELA
+                </button>
+                <button className="export-table-btn" onClick={downloadExportCsv}>
+                  EXPORTAR TABELA
+                </button>
+              </div>
+            </div>
+            <ShipmentManagement
+              shipments={shipments}
+              inventoryUsers={inventoryUsers}
+              onUpdateShipment={onUpdateShipment}
+            />
+          </div>
         </div>
-        <ShipmentManagement
-          shipments={shipments}
-          inventoryUsers={inventoryUsers}
-          onUpdateShipment={onUpdateShipment}
-        />
-      </div>
+      )}
 
       {isModalOpen && (
         <div className="modal-overlay" onClick={() => setIsModalOpen(false)}>

@@ -15,10 +15,63 @@
   margin-bottom: 6px;
 }
 
+.inventory-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 20px;
+  overflow-x: auto;
+  border-bottom: 1px solid #dfe3eb;
+}
+
+.inventory-tab {
+  flex: 0 0 auto;
+  padding: 12px 16px;
+  border: none;
+  border-bottom: 3px solid transparent;
+  background: transparent;
+  color: #536078;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.inventory-tab:hover {
+  color: #0066cc;
+}
+
+.inventory-tab.active {
+  border-bottom-color: #0066cc;
+  color: #0066cc;
+}
+
+.inventory-tab:focus-visible {
+  outline: 2px solid #0066cc;
+  outline-offset: -2px;
+}
+
 .mdt-line2 {
   font-size: 20px;
   color: #333;
   font-weight: 600;
+}
+
+.mdt-body h2,
+.inventory-panel-heading h2 {
+  margin: 0;
+  font-size: 20px;
+  color: #333;
+}
+
+.inventory-panel-header,
+.inventory-panel-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+}
+
+.inventory-panel-heading {
+  margin: 0 0 20px;
 }
 
 .manage-link {
@@ -47,6 +100,13 @@
   border-radius: 8px;
   border: 1px solid #e0e0e0;
   box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+}
+
+@media (max-width: 600px) {
+  .inventory-panel-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
 }
 
 .envios-section {

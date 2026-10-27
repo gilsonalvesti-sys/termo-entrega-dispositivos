@@ -55,7 +55,7 @@ function DeliveryTermsScreen({ terms, setTerms }) {
   return (
     <div className="delivery-terms-container">
       <div className="header-section">
-        <div className="breadcrumb">Empresas &gt; Configurações &gt; Termo de aceite</div>
+        <div className="breadcrumb">Empresas &gt; Configurações &gt; Termo de Entrega</div>
         <h1>Configuração</h1>
       </div>
 
