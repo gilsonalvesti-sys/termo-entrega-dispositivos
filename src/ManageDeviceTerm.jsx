@@ -1,8 +1,18 @@
 import { useMemo, useState } from "react";
 import ShipmentManagement from "./ShipmentManagement";
+import InventoryDevicesTable from "./ManageInventoryScreen";
 import "./ManageDeviceTerm.css";
 
-function ManageDeviceTerm({ terms, inventoryUsers, shipments, onAddShipments, onUpdateShipment, onOpenGerenciar }) {
+const sampleLines = [
+  { id: 1, operator: "Vivo", line: "(11) 99912-3401", userName: "João Silva" },
+  { id: 2, operator: "Claro", line: "(11) 99876-1202", userName: "Maria Souza" },
+  { id: 3, operator: "TIM", line: "(21) 99765-4303", userName: "Carlos Lima" },
+  { id: 4, operator: "Vivo", line: "(31) 99654-7804", userName: "Ana Pereira" },
+  { id: 5, operator: "Claro", line: "(41) 99543-2105", userName: "" },
+  { id: 6, operator: "TIM", line: "(51) 99432-6506", userName: "Paulo Santos" },
+];
+
+function ManageDeviceTerm({ terms, inventoryUsers, shipments, onAddShipments, onUpdateShipment }) {
   const [activeTab, setActiveTab] = useState("dispositivo");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [showUploadModal, setShowUploadModal] = useState(false);
@@ -413,7 +423,6 @@ function ManageDeviceTerm({ terms, inventoryUsers, shipments, onAddShipments, on
         {[
           ["dispositivo", "Dispositivo"],
           ["linhas", "Linhas"],
-          ["simcards", "Simcards"],
           ["termo", "Termo de Entrega"],
         ].map(([tab, label]) => (
           <button
@@ -438,13 +447,8 @@ function ManageDeviceTerm({ terms, inventoryUsers, shipments, onAddShipments, on
           role="tabpanel"
           aria-labelledby="inventory-tab-dispositivo"
         >
-          <div className="inventory-panel-header">
-            <h2>Dispositivo</h2>
-            <button type="button" className="manage-link" onClick={onOpenGerenciar}>
-              Gerenciar inventário
-            </button>
-          </div>
-          <p>Consulte e gerencie os dispositivos do inventário.</p>
+          <h2>Dispositivo</h2>
+          <InventoryDevicesTable />
         </section>
       )}
 
@@ -456,19 +460,26 @@ function ManageDeviceTerm({ terms, inventoryUsers, shipments, onAddShipments, on
           aria-labelledby="inventory-tab-linhas"
         >
           <h2>Linhas</h2>
-          <p>A gestão de linhas será disponibilizada nesta área.</p>
-        </section>
-      )}
-
-      {activeTab === "simcards" && (
-        <section
-          id="inventory-panel-simcards"
-          className="mdt-body"
-          role="tabpanel"
-          aria-labelledby="inventory-tab-simcards"
-        >
-          <h2>Simcards</h2>
-          <p>A gestão de simcards será disponibilizada nesta área.</p>
+          <div className="manage-inventory-table-wrap">
+            <table className="manage-inventory-table">
+              <thead>
+                <tr>
+                  <th>Operadora</th>
+                  <th>Linha</th>
+                  <th>Usuário</th>
+                </tr>
+              </thead>
+              <tbody>
+                {sampleLines.map((line) => (
+                  <tr key={line.id}>
+                    <td>{line.operator}</td>
+                    <td>{line.line}</td>
+                    <td>{line.userName || "—"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </section>
       )}
 

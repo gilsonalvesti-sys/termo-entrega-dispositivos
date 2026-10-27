@@ -13,45 +13,33 @@ const sampleDevices = [
   { id: 10, userName: "", model: "RTX-10000", imei: "358762043920356", platform: "iOS", status: "Devolvido" },
 ];
 
-function ManageInventoryScreen({ onBack }) {
+function InventoryDevicesTable() {
   return (
-    <div className="manage-inventory-container">
-      <div className="manage-inventory-header">
-        <div>
-          <div className="breadcrumb">Gerenciar</div>
-          <h1>Inventário de Dispositivos</h1>
-        </div>
-        <button className="back-btn" type="button" onClick={onBack}>
-          Voltar
-        </button>
-      </div>
-
-      <div className="manage-inventory-table-wrap">
-        <table className="manage-inventory-table">
-          <thead>
-            <tr>
-              <th>Nome Usuário</th>
-              <th>Modelo</th>
-              <th>IMEI</th>
-              <th>Plataforma</th>
-              <th>Status</th>
+    <div className="manage-inventory-table-wrap">
+      <table className="manage-inventory-table">
+        <thead>
+          <tr>
+            <th>Nome Usuário</th>
+            <th>Modelo</th>
+            <th>IMEI</th>
+            <th>Plataforma</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {sampleDevices.map((device) => (
+            <tr key={device.id}>
+              <td>{device.userName || "—"}</td>
+              <td>{device.model}</td>
+              <td>{device.imei}</td>
+              <td>{device.platform}</td>
+              <td>{device.status}</td>
             </tr>
-          </thead>
-          <tbody>
-            {sampleDevices.map((device) => (
-              <tr key={device.id}>
-                <td>{device.userName || "—"}</td>
-                <td>{device.model}</td>
-                <td>{device.imei}</td>
-                <td>{device.platform}</td>
-                <td>{device.status}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }
 
-export default ManageInventoryScreen;
+export default InventoryDevicesTable;

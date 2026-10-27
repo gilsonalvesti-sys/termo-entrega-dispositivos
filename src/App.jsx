@@ -1,7 +1,6 @@
 import { useState } from "react";
 import DeliveryTermsScreen from "./DeliveryTermsScreen";
 import ManageDeviceTerm from "./ManageDeviceTerm";
-import ManageInventoryScreen from "./ManageInventoryScreen";
 import "./Sidebar.css";
 
 const initialTerms = [
@@ -129,8 +128,6 @@ function App() {
             setTerms={setTerms}
             onAddShipment={addShipments}
           />
-        ) : screen === "gerenciar" ? (
-          <ManageInventoryScreen onBack={() => setScreen("inventario")} />
         ) : (
           <ManageDeviceTerm
             terms={terms}
@@ -138,7 +135,6 @@ function App() {
             shipments={shipments}
             onAddShipments={addShipments}
             onUpdateShipment={updateShipment}
-            onOpenGerenciar={() => setScreen("gerenciar")}
           />
         )}
       </main>

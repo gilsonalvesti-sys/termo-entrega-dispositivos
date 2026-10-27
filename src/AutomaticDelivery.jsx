@@ -153,8 +153,8 @@ function AutomaticDelivery() {
           <div className="ad-info-icon">ℹ</div>
           <p>
             Ao habilitar esta funcionalidade, o termo será enviado automaticamente
-            quando novos vínculos de usuários com dispositivos, linhas e simcards
-            forem realizados.
+            quando novos vínculos de usuários com dispositivos e linhas forem
+            realizados.
           </p>
         </div>
 
